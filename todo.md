@@ -1,0 +1,18 @@
+# Project TODO
+
+- [x] Keep one shared itinerary board only; use in-memory server state with no authentication, accounts, database, or multi-board support.
+- [x] Implement real backend routes for reading and mutating itinerary days and structured itinerary items.
+- [x] Implement direct human controls to add, update, and delete itinerary days and items without drag-and-drop.
+- [x] Register official WebMCP tools with document.modelContext.registerTool(), including schemas and handlers for reading, adding, updating, and removing itinerary items.
+- [x] Ensure WebMCP handlers call real backend routes and reflect actual shared state changes.
+- [x] Add regular state refresh and visible shared-live-itinerary collaboration messaging.
+- [x] Build responsive plain-CSS UI in a sophisticated editorial cream / Didone serif visual style.
+- [x] Add concise in-product WebMCP explanation for the hackathon demo.
+- [x] Add or update Vitest coverage for in-memory state and route/tool behavior.
+- [x] Run typecheck, tests, and visual verification before delivery.
+- [x] Isolate each day’s add form from the global edit form so editing cannot accidentally patch another day’s item.
+- [x] Add Vitest coverage for the real Express itinerary routes, including success and error cases.
+- [x] Extract and test the browser WebMCP tool definitions so handlers demonstrably call real backend routes for read, add, update, and remove.
+- [x] Prevent new-item saves while an existing item is being edited from routing through the edit mutation.
+- [x] Ensure Vitest discovers and executes the client WebMCP bridge test.
+- [x] Verify the executed WebMCP test asserts all four real backend paths and agent source markers.
