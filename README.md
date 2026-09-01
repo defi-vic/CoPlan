@@ -1,46 +1,40 @@
 # CoPlan
 
-CoPlan is a shared trip-planning board for the WebMCP Challenge. A person can edit one Kyoto itinerary directly while a browser agent can use structured WebMCP tools to read, add, update, and remove the same activities. Both paths reach the same serverless API routes and the UI polls the board so changes remain visible.
+CoPlan is a shared trip-planning board for the WebMCP Challenge. A person can edit one Austin itinerary directly while a browser agent can use structured WebMCP tools to read the board, set trip details, add or remove activities, and search curated suggestions. Both paths call the same Next.js API routes and the UI refreshes the shared state.
 
 ## Architecture
 
-This project uses **Next.js App Router + TypeScript** and is designed for a zero-configuration Vercel deployment. The UI lives in `app/page.tsx`, the global styles are in `app/globals.css`, the shared state and helpers are in `lib/store.ts`, and the WebMCP bridge is in `lib/webmcp.ts`.
+CoPlan uses **Next.js App Router + TypeScript** with plain React components and plain CSS. The board is defined in `app/page.tsx`; global styling lives in `app/globals.css`; the single in-memory source of truth is `lib/store.ts`; and the client-side WebMCP bridge is `lib/webmcp.ts`.
 
-| Route | Purpose |
-| --- | --- |
-| `GET /api/board` | Read the single shared board. |
-| `POST /api/board` | Add an itinerary day. |
-| `PATCH /api/board` | Update board metadata. |
-| `DELETE /api/board/:id` | Delete an itinerary day. |
-| `GET /api/activities` | Read all activities. |
-| `POST /api/activities` | Add a structured activity. |
-| `PATCH /api/activities/:id` | Update an activity. |
-| `DELETE /api/activities/:id` | Remove an activity. |
-| `GET /api/search?q=...` | Return suggested activities for a demo search. |
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/board` | Return the full board state. |
+| `PATCH` | `/api/board` | Update `destination`, `dates`, and/or `budget`. |
+| `POST` | `/api/activities` | Add `{ title, cost?, notes? }`. |
+| `PATCH` | `/api/activities/:id` | Update an activity. |
+| `DELETE` | `/api/activities/:id` | Remove an activity. |
+| `GET` | `/api/search?q=` | Return curated Austin activity suggestions. |
 
-## WebMCP
+`spent` is recomputed from the activity costs after every store mutation. The board seeds with three activities so the demo is populated on first load.
 
-When the browser exposes `document.modelContext`, CoPlan registers four imperative tools with `document.modelContext.registerTool()`: `get-itinerary`, `add-itinerary-item`, `update-itinerary-item`, and `remove-itinerary-item`. Their handlers call the real routes above; they do not fabricate tool responses or maintain a second client-only state.
+## WebMCP tools
 
-> WebMCP is a proposed browser API that lets websites expose structured JavaScript tools to AI agents. In this demo, the agent operates on the same itinerary state the human sees.
+When `modelContext` is present on `document`, CoPlan registers these five tools in a `useEffect`: `get_trip_board`, `set_trip_details`, `add_activity`, `remove_activity`, and `search_activities`. Each `execute()` calls the real API route and returns `{ content: [{ type: "text", text: "..." }] }`. Registration is feature-detected, and an `AbortController` plus unregister cleanup is used on unmount. Unsupported browsers show a **WebMCP tools not detected** status without throwing.
 
-## State and limitations
+> WebMCP lets a browser page expose structured JavaScript tools to an AI agent. In this demo, the agent and the human edit the same live board rather than maintaining separate simulated results.
 
-The board is intentionally stored in one in-memory JavaScript object. In a serverless environment, that object is local to a warm function instance. It can reset on a cold start, redeploy, or function replacement; this is expected for the hackathon milestone and is not intended to provide durable persistence. There is no authentication, account system, database, multi-board support, drag-and-drop ordering, or additional AI feature layer.
+## State limitation
 
-## Local development
+The board is intentionally one in-memory JavaScript object. In Vercel’s serverless environment, memory belongs to a warm function instance and may reset on a cold start, redeploy, or function replacement. This reset behavior is expected for the hackathon milestone; there is no database, authentication, account system, persistence layer, multi-board support, or external search call.
+
+## Local development and verification
 
 ```bash
 pnpm install
 pnpm dev
-```
-
-Run the checks with:
-
-```bash
 pnpm check
 pnpm test
 pnpm build
 ```
 
-For the WebMCP portion, use a Chrome environment that supports the API or the official WebMCP Inspector/origin-trial flow. The local preview may display “Browser tool API unavailable” when the current browser does not expose the experimental API; the application remains usable through its human controls and real API routes.
+For the WebMCP demo, open the site in a Chrome environment where WebMCP testing is enabled, such as `chrome://flags/#enable-webmcp-testing`, or use the official WebMCP Inspector/origin-trial flow. In ordinary browsers the board remains fully usable through its human controls while the status badge reports that the browser tool API was not detected.

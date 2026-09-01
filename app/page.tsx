@@ -1,98 +1,24 @@
 "use client";
-export const dynamic = "force-dynamic";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { ItineraryBoard, ItineraryDay, ItineraryItem } from "../lib/types";
+import type { Activity, Board } from "../lib/types";
 import { registerWebMcpTools } from "../lib/webmcp";
 
-type ToolDefinition = {
-  name: string;
-  title?: string;
-  description: string;
-  inputSchema?: Record<string, unknown>;
-  execute: (input: Record<string, unknown>, options?: { signal: AbortSignal }) => Promise<unknown>;
-};
+declare global { interface Document { modelContext?: { registerTool: (tool: any) => Promise<unknown> | unknown; unregisterTool?: (name: string) => Promise<unknown> | unknown }; } }
+const emptyActivity = { title: "", cost: "", notes: "" };
+async function api<T>(path: string, init?: RequestInit): Promise<T> { const response = await fetch(path, { headers: { "Content-Type": "application/json" }, ...init }); const body = response.status === 204 ? undefined : await response.json(); if (!response.ok) throw new Error(body?.error ?? "Request failed"); return body as T; }
 
-declare global {
-  interface Document {
-    modelContext?: {
-      registerTool: (tool: ToolDefinition) => Promise<undefined>;
-      getTools: () => Promise<unknown[]>;
-    };
-  }
-}
-
-const categoryLabels: Record<ItineraryItem["category"], string> = { stay: "Stay", food: "Food", culture: "Culture", transit: "Transit", nature: "Nature" };
-const emptyItem = { time: "09:00", title: "", location: "", category: "culture" as ItineraryItem["category"], notes: "" };
-
-async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, { headers: { "Content-Type": "application/json" }, ...init });
-  if (!response.ok) throw new Error((await response.json()).error ?? "Request failed");
-  return response.status === 204 ? (undefined as T) : response.json();
-}
-
-export default function Home() {
-  const [board, setBoard] = useState<ItineraryBoard | null>(null);
-  const [error, setError] = useState("");
-  const [lastRefresh, setLastRefresh] = useState(new Date());
-  const [toolStatus, setToolStatus] = useState("Checking tool surface");
-  const [editingItem, setEditingItem] = useState<string | null>(null);
-  const [editDraft, setEditDraft] = useState(emptyItem);
-  const [newDrafts, setNewDrafts] = useState<Record<string, typeof emptyItem>>({});
-  const [newDayOpen, setNewDayOpen] = useState(false);
-  const [dayDraft, setDayDraft] = useState({ date: "2026-10-15", label: "" });
-
-  const refresh = useCallback(async () => {
-    try { setBoard(await api<ItineraryBoard>("/api/board")); setLastRefresh(new Date()); setError(""); }
-    catch (err) { setError(err instanceof Error ? err.message : "Could not load itinerary."); }
-  }, []);
-
-  useEffect(() => { void refresh(); const timer = window.setInterval(() => void refresh(), 3500); return () => window.clearInterval(timer); }, [refresh]);
-
-  const registerTools = useCallback(async () => {
-    if (!document.modelContext) { setToolStatus("Browser tool API unavailable"); return; }
-    try { const count = await registerWebMcpTools(document.modelContext, api, refresh); setToolStatus(`${count} tools registered`); }
-    catch { setToolStatus("Tool registration needs a fresh page"); }
-  }, [refresh]);
-
-  useEffect(() => { void registerTools(); }, [registerTools]);
-
-  const itemCount = useMemo(() => board?.days.reduce((total, day) => total + day.items.length, 0) ?? 0, [board]);
-  const saveItem = async (dayId: string) => {
-    if (!editingItem) return;
-    try { await api(`/api/activities/${editingItem}`, { method: "PATCH", body: JSON.stringify({ ...editDraft, dayId, source: "human" }) }); setEditingItem(null); setEditDraft(emptyItem); await refresh(); }
-    catch (err) { setError(err instanceof Error ? err.message : "Could not save item."); }
-  };
-  const addItem = async (dayId: string) => {
-    try { await api("/api/activities", { method: "POST", body: JSON.stringify({ ...(newDrafts[dayId] ?? emptyItem), dayId, source: "human" }) }); setNewDrafts((current) => ({ ...current, [dayId]: emptyItem })); await refresh(); }
-    catch (err) { setError(err instanceof Error ? err.message : "Could not add item."); }
-  };
-  const removeItem = async (id: string) => { if (!window.confirm("Remove this item from the shared board?")) return; try { await api(`/api/activities/${id}`, { method: "DELETE", body: JSON.stringify({ source: "human" }) }); await refresh(); } catch (err) { setError(err instanceof Error ? err.message : "Could not remove item."); } };
-  const addDay = async () => { try { await api("/api/board", { method: "POST", body: JSON.stringify({ ...dayDraft, source: "human" }) }); setDayDraft({ date: "2026-10-15", label: "" }); setNewDayOpen(false); await refresh(); } catch (err) { setError(err instanceof Error ? err.message : "Could not add day."); } };
-  const removeDay = async (id: string) => { if (!window.confirm("Remove this day and its items?")) return; try { await api(`/api/board/${id}`, { method: "DELETE", body: JSON.stringify({ source: "human" }) }); await refresh(); } catch (err) { setError(err instanceof Error ? err.message : "Could not remove day."); } };
-  const startEdit = (item: ItineraryItem) => { setEditingItem(item.id); setEditDraft({ time: item.time, title: item.title, location: item.location, category: item.category, notes: item.notes }); };
-
+export default function Page() {
+  const [board, setBoard] = useState<Board | null>(null); const [form, setForm] = useState(emptyActivity); const [editing, setEditing] = useState<Activity | null>(null); const [detailsOpen, setDetailsOpen] = useState(false); const [details, setDetails] = useState({ destination: "", dates: "", budget: "" }); const [status, setStatus] = useState("checking"); const [error, setError] = useState("");
+  const refresh = useCallback(async () => { try { setBoard(await api<Board>("/api/board")); setError(""); } catch (e) { setError(e instanceof Error ? e.message : "Could not load board."); } }, []);
+  useEffect(() => { void refresh(); const timer = window.setInterval(() => void refresh(), 4000); return () => window.clearInterval(timer); }, [refresh]);
+  useEffect(() => { const controller = new AbortController(); let cleanup: (() => void) | undefined; if (!document.modelContext) { setStatus("not detected"); return () => controller.abort(); } void registerWebMcpTools(document.modelContext, api, refresh, controller.signal).then((unregister) => { cleanup = unregister; if (!controller.signal.aborted) setStatus("active"); }); return () => { controller.abort(); cleanup?.(); }; }, [refresh]);
+  const saveActivity = async () => { try { await api("/api/activities", { method: "POST", body: JSON.stringify({ title: form.title, cost: Number(form.cost) || 0, notes: form.notes }) }); setForm(emptyActivity); await refresh(); } catch (e) { setError(e instanceof Error ? e.message : "Could not add activity."); } };
+  const updateActivity = async () => { if (!editing) return; try { await api(`/api/activities/${editing.id}`, { method: "PATCH", body: JSON.stringify({ title: editing.title, cost: editing.cost, notes: editing.notes }) }); setEditing(null); await refresh(); } catch (e) { setError(e instanceof Error ? e.message : "Could not update activity."); } };
+  const removeActivity = async (id: string) => { try { await api(`/api/activities/${id}`, { method: "DELETE" }); await refresh(); } catch (e) { setError(e instanceof Error ? e.message : "Could not remove activity."); } };
+  const openDetails = () => { if (board) setDetails({ destination: board.destination, dates: board.dates, budget: String(board.budget) }); setDetailsOpen(true); };
+  const saveDetails = async () => { try { await api("/api/board", { method: "PATCH", body: JSON.stringify({ ...details, budget: Number(details.budget) || 0 }) }); setDetailsOpen(false); await refresh(); } catch (e) { setError(e instanceof Error ? e.message : "Could not update details."); } };
+  const progress = useMemo(() => board ? Math.min(100, Math.round((board.spent / Math.max(board.budget, 1)) * 100)) : 0, [board]);
   if (!board) return <main className="loading"><span className="eyebrow">COPLAN / SHARED BOARD</span><h1>Making room<br />for the next idea.</h1><p>{error || "Loading the live itinerary…"}</p></main>;
-
-  return <div className="app-shell">
-    <header className="topbar"><a className="wordmark" href="/">Co<span>/</span>Plan</a><div className="topbar-meta"><span className="live-dot" /> <span>Live shared board</span><span className="slash">/</span><span>Last synced {lastRefresh.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span></div><div className="tool-pill"><span className="tool-mark">⌘</span>{toolStatus}</div></header>
-    <main className="container">
-      <section className="hero"><div className="hero-kicker"><span>01</span><span>TRIP STUDY / AUTUMN 2026</span></div><h1>Make a week<br /><em>of it.</em></h1><div className="hero-side"><p>Kyoto, slowly. A working itinerary for curious people who prefer the long way around.</p><div className="hero-rule" /><span>Human taste +<br />agent precision</span></div></section>
-      <section className="board-intro"><div><span className="eyebrow">{board.destination}</span><h2>{board.title}</h2></div><div className="board-actions"><span className="item-count">{itemCount} stops / {board.days.length} days</span><button className="button dark" onClick={() => setNewDayOpen((open) => !open)}>+ Add day</button></div></section>
-      {newDayOpen && <div className="day-form inline-form"><input type="date" value={dayDraft.date} onChange={(event) => setDayDraft({ ...dayDraft, date: event.target.value })} /><input placeholder="Day title" value={dayDraft.label} onChange={(event) => setDayDraft({ ...dayDraft, label: event.target.value })} /><button className="button dark" onClick={() => void addDay()}>Create day</button><button className="text-button" onClick={() => setNewDayOpen(false)}>Cancel</button></div>}
-      {error && <div className="error-banner">{error}<button onClick={() => setError("")}>Dismiss</button></div>}
-      <section className="days">{board.days.map((day, index) => <DayColumn key={day.id} day={day} index={index} editingItem={editingItem} editDraft={editDraft} setEditDraft={setEditDraft} newDraft={newDrafts[day.id] ?? emptyItem} setNewDraft={(draft) => setNewDrafts((current) => ({ ...current, [day.id]: draft }))} startEdit={startEdit} saveItem={saveItem} addItem={addItem} removeItem={removeItem} removeDay={removeDay} cancelEdit={() => { setEditingItem(null); setEditDraft(emptyItem); }} />)}</section>
-      <section className="webmcp-note"><div className="note-number">02</div><div><span className="eyebrow">WHY THIS IS DIFFERENT</span><h2>One board.<br /><em>Two kinds of agency.</em></h2></div><p>WebMCP gives an agent structured tools on this page instead of a screenshot to interpret. Every tool call reaches the same live server routes as the human controls, so an agent can read, add, refine, or remove a stop while the board keeps its visual truth. You stay in the loop; the itinerary stays real.</p></section>
-    </main><footer><span>CoPlan / A WebMCP challenge study</span><span>State is in memory and shared by this running board</span></footer>
-  </div>;
-}
-
-function DayColumn({ day, index, editingItem, editDraft, setEditDraft, newDraft, setNewDraft, startEdit, saveItem, addItem, removeItem, removeDay, cancelEdit }: { day: ItineraryDay; index: number; editingItem: string | null; editDraft: typeof emptyItem; setEditDraft: (draft: typeof emptyItem) => void; newDraft: typeof emptyItem; setNewDraft: (draft: typeof emptyItem) => void; startEdit: (item: ItineraryItem) => void; saveItem: (dayId: string) => Promise<void>; addItem: (dayId: string) => Promise<void>; removeItem: (id: string) => Promise<void>; removeDay: (id: string) => Promise<void>; cancelEdit: () => void }) {
-  return <article className="day-column"><div className="day-heading"><div><span className="day-index">DAY {String(index + 1).padStart(2, "0")}</span><h3>{day.label}</h3><time>{new Date(`${day.date}T12:00:00`).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}</time></div><button className="icon-button" aria-label={`Delete ${day.label}`} onClick={() => void removeDay(day.id)}>×</button></div><div className="day-rule" />
-    <div className="items">{day.items.map((item) => editingItem === item.id ? <ItemEditor key={item.id} draft={editDraft} setDraft={setEditDraft} onSave={() => void saveItem(day.id)} onCancel={cancelEdit} /> : <div className="item-card" key={item.id}><div className="item-time">{item.time}</div><div className="item-body"><div className="item-title-row"><h4>{item.title}</h4>{item.source === "agent" && <span className="agent-tag">AGENT</span>}</div><p className="location">{item.location} <span>·</span> {categoryLabels[item.category]}</p>{item.notes && <p className="notes">{item.notes}</p>}<div className="item-actions"><button onClick={() => startEdit(item)}>Edit</button><button onClick={() => void removeItem(item.id)}>Remove</button></div></div></div>)}<ItemEditor draft={newDraft} setDraft={setNewDraft} onSave={() => void addItem(day.id)} onCancel={cancelEdit} isNew /></div>
-  </article>;
-}
-
-function ItemEditor({ draft, setDraft, onSave, onCancel, isNew = false }: { draft: typeof emptyItem; setDraft: (draft: typeof emptyItem) => void; onSave: () => void; onCancel: () => void; isNew?: boolean }) {
-  return <div className={`item-editor ${isNew ? "new-item" : ""}`}><div className="editor-label">{isNew ? "+ Add a stop" : "Edit stop"}</div><div className="editor-grid"><input aria-label="Time" type="time" value={draft.time} onChange={(e) => setDraft({ ...draft, time: e.target.value })} /><input aria-label="Activity" placeholder="Activity" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} /><input aria-label="Location" placeholder="Location" value={draft.location} onChange={(e) => setDraft({ ...draft, location: e.target.value })} /><select aria-label="Category" value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value as ItineraryItem["category"] })}>{Object.entries(categoryLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></div><textarea aria-label="Notes" placeholder="A note for the board (optional)" value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} /><div className="editor-actions"><button className="button dark small" onClick={onSave}>{isNew ? "Add to day" : "Save changes"}</button>{!isNew && <button className="text-button" onClick={onCancel}>Cancel</button>}</div></div>;
+  return <div className="site-shell"><header className="topbar"><a className="wordmark" href="/">Co<span>/</span>Plan</a><div className="tool-status"><span className={`status-dot ${status === "active" ? "active" : ""}`} /> WebMCP tools {status === "active" ? "active ✓" : status === "not detected" ? "not detected" : "checking…"}</div></header><main className="board-wrap"><section className="intro"><span className="eyebrow">SHARED LIVE ITINERARY / 01</span><h1>Make a trip<br /><em>of it.</em></h1><p className="dek">One board for human taste and agent precision. Edit it here, or open this page in ChatGPT&apos;s in-app browser and ask your agent to plan the trip.</p></section><section className="trip-meta"><div><span className="eyebrow">DESTINATION</span><h2>{board.destination}</h2><p>{board.dates}</p></div><div className="budget"><div className="budget-line"><span>Budget: ${board.spent} / ${board.budget}</span><button className="link-button" onClick={openDetails}>Edit trip</button></div><div className="meter"><span style={{ width: `${progress}%` }} /></div></div></section>{error && <div className="error">{error}</div>}<section className="itinerary"><div className="section-heading"><div><span className="eyebrow">ITINERARY</span><h2>Three good reasons to go.</h2></div><span className="count">{board.activities.length} activities</span></div><div className="activity-list">{board.activities.map((activity) => <article className="activity" key={activity.id}><span className="activity-order">{String(activity.order).padStart(2, "0")}</span><div className="activity-main"><h3>{activity.title}</h3>{activity.notes && <p>{activity.notes}</p>}</div><strong>${activity.cost}</strong><div className="activity-actions"><button onClick={() => setEditing({ ...activity })}>edit</button><button aria-label={`Remove ${activity.title}`} onClick={() => void removeActivity(activity.id)}>×</button></div></article>)}</div><div className="add-panel"><span className="eyebrow">ADD ACTIVITY</span><div className="form-grid"><input placeholder="Activity title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /><input type="number" min="0" placeholder="Cost" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} /><input placeholder="Notes (optional)" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /><button className="button dark" onClick={() => void saveActivity()}>+ Add activity</button></div></div></section><section className="webmcp-note"><span className="eyebrow">WHY THIS IS DIFFERENT / 02</span><p>Ask an agent to search for activities, add them to this board, or remove one. WebMCP exposes structured tools instead of asking the agent to guess at buttons; every action still lands in these real API routes.</p><small>Chrome testing: enable <code>chrome://flags/#enable-webmcp-testing</code>.</small></section></main><footer><span>CoPlan / WebMCP challenge study</span><span>State is in memory and resets on cold start or redeploy</span></footer>{detailsOpen && <div className="modal-backdrop"><div className="modal"><span className="eyebrow">TRIP DETAILS</span><h2>Shape the frame.</h2><input value={details.destination} onChange={(e) => setDetails({ ...details, destination: e.target.value })} /><input value={details.dates} onChange={(e) => setDetails({ ...details, dates: e.target.value })} /><input type="number" value={details.budget} onChange={(e) => setDetails({ ...details, budget: e.target.value })} /><div><button className="button dark" onClick={() => void saveDetails()}>Save details</button><button className="link-button" onClick={() => setDetailsOpen(false)}>Cancel</button></div></div></div>}{editing && <div className="modal-backdrop"><div className="modal"><span className="eyebrow">EDIT ACTIVITY</span><h2>Refine the plan.</h2><input value={editing.title} onChange={(e) => setEditing({ ...editing, title: e.target.value })} /><input type="number" value={editing.cost} onChange={(e) => setEditing({ ...editing, cost: Number(e.target.value) || 0 })} /><textarea value={editing.notes} onChange={(e) => setEditing({ ...editing, notes: e.target.value })} /><div><button className="button dark" onClick={() => void updateActivity()}>Save activity</button><button className="link-button" onClick={() => setEditing(null)}>Cancel</button></div></div></div>}</div>;
 }

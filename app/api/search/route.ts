@@ -1,14 +1,10 @@
 import { NextResponse } from "next/server";
 
 const suggestions = [
-  { title: "Nishiki Market breakfast", location: "Nishiki Market", category: "food", time: "09:00" },
-  { title: "Philosopher’s Path", location: "Higashiyama", category: "nature", time: "10:30" },
-  { title: "Kiyomizu-dera at golden hour", location: "Otowa", category: "culture", time: "17:00" },
-  { title: "Tea ceremony in Uji", location: "Uji", category: "culture", time: "14:00" },
+  { title: "Lady Bird Lake sunset walk", cost: 0, notes: "An easy downtown loop with skyline views." },
+  { title: "Tacos at Veracruz All Natural", cost: 24, notes: "Order the migas taco and a fresh agua fresca." },
+  { title: "Live music on Red River", cost: 18, notes: "Check the venue calendar before heading out." },
+  { title: "Barton Springs swim", cost: 9, notes: "Bring a towel; mornings are quieter." },
 ];
 
-export async function GET(request: Request) {
-  const query = new URL(request.url).searchParams.get("q")?.toLowerCase().trim();
-  const results = query ? suggestions.filter((item) => `${item.title} ${item.location} ${item.category}`.toLowerCase().includes(query)) : suggestions;
-  return NextResponse.json(results);
-}
+export async function GET(request: Request) { const query = new URL(request.url).searchParams.get("q")?.toLowerCase().trim(); const results = query ? suggestions.filter((activity) => `${activity.title} ${activity.notes}`.toLowerCase().includes(query)) : suggestions; return NextResponse.json(results); }

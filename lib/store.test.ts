@@ -1,13 +1,16 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { createItem, getBoard, resetBoardForTests } from "./store";
+import { createActivity, deleteActivity, getBoard, resetBoardForTests, updateActivity } from "./store";
 
 afterEach(() => resetBoardForTests());
 
 describe("shared in-memory store", () => {
-  it("exposes agent-created items through the same board read", () => {
-    const created = createItem({ dayId: "day-1", time: "21:00", title: "Night walk", location: "Gion", category: "nature", notes: "", source: "agent" }, "agent");
-    const board = getBoard();
-    expect(board.days[0]?.items.some((item) => item.id === created.id && item.source === "agent")).toBe(true);
-    expect(board.updatedBy).toBe("agent");
+  it("recomputes spent after add, update, and remove", () => {
+    expect(getBoard().spent).toBe(150);
+    const created = createActivity({ title: "Museum", cost: 25, notes: "", });
+    expect(getBoard().spent).toBe(175);
+    updateActivity(created.activities.at(-1)!.id, { cost: 80 });
+    expect(getBoard().spent).toBe(230);
+    deleteActivity(created.activities.at(-1)!.id);
+    expect(getBoard().spent).toBe(150);
   });
 });

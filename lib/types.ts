@@ -1,30 +1,19 @@
-export type ItineraryItem = {
+export type Activity = {
   id: string;
-  dayId: string;
-  time: string;
   title: string;
-  location: string;
-  category: "stay" | "food" | "culture" | "transit" | "nature";
+  cost: number;
   notes: string;
-  source: "human" | "agent";
+  order: number;
 };
 
-export type ItineraryDay = {
-  id: string;
-  date: string;
-  label: string;
-  items: ItineraryItem[];
-};
-
-export type ItineraryBoard = {
-  title: string;
+export type Board = {
   destination: string;
-  updatedAt: string;
-  updatedBy: "human" | "agent" | "system";
-  days: ItineraryDay[];
+  dates: string;
+  budget: number;
+  spent: number;
+  activities: Activity[];
 };
 
-export type CreateDayInput = Pick<ItineraryDay, "date" | "label">;
-export type UpdateDayInput = Partial<CreateDayInput>;
-export type CreateItemInput = Omit<ItineraryItem, "id" | "source"> & { source?: ItineraryItem["source"] };
-export type UpdateItemInput = Partial<Omit<ItineraryItem, "id" | "dayId" | "source">> & { dayId?: string; source?: ItineraryItem["source"] };
+export type BoardPatch = Partial<Pick<Board, "destination" | "dates" | "budget">>;
+export type ActivityInput = { title: string; cost?: number; notes?: string };
+export type ActivityPatch = Partial<ActivityInput>;

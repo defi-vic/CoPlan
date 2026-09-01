@@ -23,3 +23,11 @@
 - [x] Make `next build` work out of the box for Vercel and add/update tests for the new route/store/tool structure.
 - [x] Create or connect a public GitHub repository for the Vercel handoff.
 - [x] Add Vitest coverage for the Next.js App Router API handlers under `app/api` and verify it runs in `pnpm test`.
+- [x] Replace the itinerary model with `Activity` and `Board`, seed one Austin, TX board with three activities, and recompute `spent` from activity costs on every change.
+- [x] Align API routes exactly to board metadata, activity CRUD, and curated local search behavior.
+- [x] Replace the WebMCP surface with `get_trip_board`, `set_trip_details`, `add_activity`, `remove_activity`, and `search_activities`, returning `{ content: [{ type: "text", text }] }` confirmations.
+- [x] Feature-detect `modelContext`, show active/not-detected status, and clean up registration with AbortController on unmount without throwing.
+- [x] Refine the UI to the concise Austin budget-board layout with direct activity edit/delete controls and add form.
+- [x] Add/update tests for spent recomputation, exact API behavior, WebMCP response shape, and lifecycle-safe unsupported-browser behavior.
+- [x] Make `get_trip_board` and `search_activities` return short human-readable confirmation text while preserving useful result context.
+- [x] Add a test proving missing `modelContext` and aborted registration fail safely and cleanup remains callable.
