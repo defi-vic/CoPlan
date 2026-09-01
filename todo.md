@@ -38,3 +38,5 @@
 - [x] Reword the singleton verification item so it does not claim cross-function serverless persistence.
 - [x] Remove the stale `pnpm.patchedDependencies` reference to the deleted wouter patch so the deployment install step can complete.
 - [x] Re-run clean dependency installation and production validation after the deployment fix.
+- [x] Ensure the Next.js production build emits a `dist/public` asset directory required by the managed deployment packaging step, without changing the Vercel App Router output.
+- [x] Revalidate the deployment-shaped build output and confirm the stale patch failure is no longer present.
