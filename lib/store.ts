@@ -7,7 +7,9 @@ const starterActivities: Activity[] = [
   { id: "activity-3", title: "Zilker Park + Barton Springs", cost: 0, notes: "Bring a towel and a good book.", order: 3 },
 ];
 
-const board: Board = { destination: "Austin, TX", dates: "Oct 10–12", budget: 500, spent: 0, activities: structuredClone(starterActivities) };
+type StoreGlobal = typeof globalThis & { __coplanBoard?: Board };
+const runtime = globalThis as StoreGlobal;
+const board = runtime.__coplanBoard ?? (runtime.__coplanBoard = { destination: "Austin, TX", dates: "Oct 10–12", budget: 500, spent: 0, activities: structuredClone(starterActivities) });
 
 function recompute() { board.spent = board.activities.reduce((sum, activity) => sum + activity.cost, 0); }
 function snapshot() { recompute(); return structuredClone(board); }

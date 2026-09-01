@@ -25,7 +25,7 @@ When `modelContext` is present on `document`, CoPlan registers these five tools 
 
 ## State limitation
 
-The board is intentionally one in-memory JavaScript object. In Vercel’s serverless environment, memory belongs to a warm function instance and may reset on a cold start, redeploy, or function replacement. This reset behavior is expected for the hackathon milestone; there is no database, authentication, account system, persistence layer, multi-board support, or external search call.
+The board is intentionally one in-memory JavaScript object. In Vercel’s serverless environment, memory belongs to a warm function instance and may reset on a cold start, redeploy, function replacement, or routing to a separate serverless instance. The singleton is shared across route handlers that execute in the same warm runtime, but cross-instance consistency is not guaranteed. This reset behavior is expected for the hackathon milestone; there is no database, authentication, account system, persistence layer, multi-board support, or external search call.
 
 ## Local development and verification
 

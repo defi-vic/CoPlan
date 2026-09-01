@@ -31,3 +31,8 @@
 - [x] Add/update tests for spent recomputation, exact API behavior, WebMCP response shape, and lifecycle-safe unsupported-browser behavior.
 - [x] Make `get_trip_board` and `search_activities` return short human-readable confirmation text while preserving useful result context.
 - [x] Add a test proving missing `modelContext` and aborted registration fail safely and cleanup remains callable.
+- [x] Remove the retired database migration script from `package.json` so the Vercel repository exposes no database workflow.
+- [x] Restore the `pnpm test` script after the database-script cleanup so the verification command remains available.
+- [x] Verify the in-memory board singleton is shared across independently compiled Next.js API route handlers within the same warm local/runtime process; document that Vercel cross-instance consistency is not guaranteed.
+- [x] Document that Vercel in-memory state is shared only within a warm runtime instance and is not guaranteed across separate serverless instances or route runtimes.
+- [x] Reword the singleton verification item so it does not claim cross-function serverless persistence.
