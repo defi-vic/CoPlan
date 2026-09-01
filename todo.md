@@ -36,3 +36,5 @@
 - [x] Verify the in-memory board singleton is shared across independently compiled Next.js API route handlers within the same warm local/runtime process; document that Vercel cross-instance consistency is not guaranteed.
 - [x] Document that Vercel in-memory state is shared only within a warm runtime instance and is not guaranteed across separate serverless instances or route runtimes.
 - [x] Reword the singleton verification item so it does not claim cross-function serverless persistence.
+- [x] Remove the stale `pnpm.patchedDependencies` reference to the deleted wouter patch so the deployment install step can complete.
+- [x] Re-run clean dependency installation and production validation after the deployment fix.
