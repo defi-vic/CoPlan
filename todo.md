@@ -16,3 +16,9 @@
 - [x] Prevent new-item saves while an existing item is being edited from routing through the edit mutation.
 - [x] Ensure Vitest discovers and executes the client WebMCP bridge test.
 - [x] Verify the executed WebMCP test asserts all four real backend paths and agent source markers.
+- [ ] Migrate the project to Next.js App Router + TypeScript with `/app` and `/lib` structure, removing standalone Node/Express runtime wiring.
+- [ ] Implement a single shared in-memory `lib/store.ts` and document cold-start/redeploy reset behavior in README.
+- [ ] Add Next.js serverless API routes for board metadata, activities CRUD, and suggested activity search.
+- [ ] Port the board UI to `app/page.tsx` with plain React and plain CSS, preserving real shared state and WebMCP registration.
+- [ ] Make `next build` work out of the box for Vercel and add/update tests for the new route/store/tool structure.
+- [ ] Create or connect a public GitHub repository for the Vercel handoff.
